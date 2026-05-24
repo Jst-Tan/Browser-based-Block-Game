@@ -179,7 +179,7 @@ function clearPopupAutoTimer() {
 }
 
 function getPopupButtonLabel(type) {
-    return type === 'shift' ? 'Start shift' : 'Continue';
+    return type === 'shift' ? 'Rotate board' : 'Continue';
 }
 
 function schedulePopupAutoDismiss(type) {
@@ -822,7 +822,7 @@ function triggerGravityShift() {
     const dirLabel = dir === 'CW' ? 'clockwise' : 'counter-clockwise';
     showEventPopup(
         'shift',
-        'Gravity Shift!',
+        'The grid turns!',
         `The board will rotate ${dirLabel}. Blocks will fall when it stops.`,
         'Timer paused until you continue.',
         () => performGravityShiftAnimation(dir)

@@ -8,7 +8,7 @@
 
 ## About
 
-The Falling Grid takes the familiar *Block Blast* loop and adds **column gravity**, **Gravity Shift** (board rotation), **chrono pressure**, and **chroma line bonuses**. It is built as a single-page app with vanilla HTML, CSS, and JavaScript so it loads instantly on phones and laptops alike.
+The Falling Grid takes the familiar *Block Blast* loop and adds **column gravity**, **timed board rotation**, **chrono pressure**, and **chroma line bonuses**. It is built as a single-page app with vanilla HTML, CSS, and JavaScript so it loads instantly on phones and laptops alike.
 
 **Stack:** HTML5 · CSS3 · Vanilla JavaScript · Web Audio API · Canvas 2D · `localStorage`
 
@@ -19,7 +19,7 @@ The Falling Grid takes the familiar *Block Blast* loop and adds **column gravity
 | Hook | What it does |
 |------|----------------|
 | **Living gravity** | Blocks fall to the bottom of their column after every move and clear. |
-| **Gravity Shift** | Every **30s** the board rotates 90° — timer pauses until you confirm. |
+| **Board rotation** | Every **30s** the board rotates 90° — timer pauses until you confirm. |
 | **Chrono budget** | **300s** to start; **−3s** per placement; line clears restore time. |
 | **Chroma Match** | One-color full line → **2× points**. |
 | **Level ups** | Every **1,000** score: +15% points, ~6% faster clock drain. |
@@ -32,7 +32,7 @@ The Falling Grid takes the familiar *Block Blast* loop and adds **column gravity
 1. Tap **Start playing** on the welcome sheet.
 2. **Drag** pieces from the tray; **tap** a piece to rotate it.
 3. Clear **full rows or columns** to score and regain time.
-4. Watch **Next shift** — when it hits zero, confirm the popup, then the board spins.
+4. Watch **Rotates in** — when it hits zero, confirm the popup, then the board spins.
 5. Clear **single-color lines** for Chroma Matches and chase your **Best** score.
 
 ---
@@ -80,7 +80,7 @@ The Falling Grid takes the familiar *Block Blast* loop and adds **column gravity
 
 1. Place a piece — watch blocks **fall** into gaps.
 2. Clear a line — note the popup, particles, and time refund.
-3. Wait for **Gravity Shift** — confirm, then watch the board rotate.
+3. Wait for the board to **rotate** — confirm the popup, then watch the grid turn.
 4. Clear a **one-color line** for a Chroma Match.
 
 ---

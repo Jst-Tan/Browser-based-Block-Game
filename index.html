@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>The Falling Grid</title>
-    <meta name="description" content="Place blocks, clear lines, and survive gravity shifts in this browser puzzle game.">
+    <meta name="description" content="The Falling Grid — place blocks, clear lines, and beat the clock in this browser puzzle game.">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230a84ff'/%3E%3Crect x='6' y='6' width='9' height='9' rx='2' fill='white' opacity='.9'/%3E%3Crect x='17' y='6' width='9' height='9' rx='2' fill='white' opacity='.45'/%3E%3Crect x='6' y='17' width='9' height='9' rx='2' fill='white' opacity='.45'/%3E%3Crect x='17' y='17' width='9' height='9' rx='2' fill='white' opacity='.75'/%3E%3C/svg%3E">
     <link rel="stylesheet" href="style.css">
 </head>
@@ -30,7 +30,7 @@
                 </div>
                 <div>
                     <h1>The Falling Grid</h1>
-                    <span>Gravity Shift</span>
+                    <span>Block puzzle</span>
                 </div>
             </div>
             <div class="header__scores" aria-live="polite" aria-atomic="true">
@@ -65,8 +65,8 @@
                 </div>
                 <div class="bar bar--hero"><div class="bar__fill" id="game-timer-bar"></div></div>
             </article>
-            <article class="metric metric--compact" id="shift-metric" aria-label="Seconds until next gravity shift">
-                <span class="label">Next shift</span>
+            <article class="metric metric--compact" id="shift-metric" aria-label="Seconds until the board rotates">
+                <span class="label">Rotates in</span>
                 <strong class="metric__value" id="gravity-countdown">30s</strong>
                 <span class="metric__sub" id="gravity-dir-box">
                     <svg class="rotate-arrow clockwise" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.2-6M21 3v5h-5"/></svg>
@@ -134,7 +134,7 @@
                     </svg>
                 </div>
                 <h2 id="intro-title">The Falling Grid</h2>
-                <p class="modal__tagline">Place blocks. Clear lines. Gravity shifts. Time falls.</p>
+                <p class="modal__tagline">Place blocks. Clear lines. The board turns. Time falls.</p>
             </div>
 
             <div class="rules">
@@ -143,8 +143,8 @@
                     <p class="rule__text">Drag 3 pieces onto the 8×8 grid. Clear full rows or columns.</p>
                 </article>
                 <article class="rule">
-                    <h3 class="rule__title">Gravity</h3>
-                    <p class="rule__text">Blocks fall after every move. Every 30s the board rotates — confirm, then it spins.</p>
+                    <h3 class="rule__title">Falling blocks</h3>
+                    <p class="rule__text">Blocks fall after every move. Every 30s the board rotates — tap continue, then it spins.</p>
                 </article>
                 <article class="rule">
                     <h3 class="rule__title">Chroma</h3>
