@@ -126,12 +126,12 @@ function displayNextEventPopup() {
 
     const { type, title, message, bonus, onContinue } = popupQueue.shift();
     const popup = document.getElementById('event-popup');
-    const icons = { shift: '↻', match: '✦', chroma: '★', combo: '🔥', level: '↑' };
+    const icons = { shift: '↻', match: '✦', chroma: '★', combo: '◆', level: '↑' };
 
     isEventPopupOpen = true;
     popupContinueCallback = onContinue || null;
 
-    popup.className = `event-popup event-popup--${type} visible`;
+    popup.className = `overlay overlay--${type} visible`;
     popup.hidden = false;
     document.getElementById('event-popup-icon').textContent = icons[type] || '✦';
     document.getElementById('event-popup-title').textContent = title;
@@ -188,7 +188,10 @@ function checkLevelUp() {
 function dismissEventPopup() {
     const popup = document.getElementById('event-popup');
     popup.classList.remove('visible');
-    setTimeout(() => { popup.hidden = true; }, 280);
+    setTimeout(() => {
+        popup.hidden = true;
+        popup.className = 'overlay';
+    }, 280);
 
     isEventPopupOpen = false;
     const cb = popupContinueCallback;
@@ -536,7 +539,7 @@ function checkStuckState() {
         el.style.color = '';
     } else {
         el.textContent = 'No moves';
-        el.style.color = 'var(--warning)';
+        el.style.color = 'var(--warn)';
     }
 }
 
@@ -800,11 +803,15 @@ function gameTick() {
 }
 
 function updateTimersView() {
-    document.getElementById('time-remaining-text').textContent = `${Math.ceil(timeRemaining)}s`;
+    const secs = Math.ceil(timeRemaining);
+    const timeEl = document.getElementById('time-remaining-text');
+    timeEl.textContent = String(secs);
+    timeEl.style.color =
+        secs <= 30 ? 'var(--danger)' : secs <= 90 ? 'var(--warn)' : 'var(--ink)';
     const pct = Math.min(100, (timeRemaining / INITIAL_TIME) * 100);
     const bar = document.getElementById('game-timer-bar');
     bar.style.width = `${pct}%`;
-    bar.style.background = timeRemaining <= 30 ? 'var(--danger)' : timeRemaining <= 90 ? 'var(--warning)' : 'var(--text)';
+    bar.style.background = secs <= 30 ? 'var(--danger)' : secs <= 90 ? 'var(--warn)' : 'var(--accent)';
 
     document.getElementById('gravity-countdown').textContent = Math.ceil(gravityCountdown);
 }
