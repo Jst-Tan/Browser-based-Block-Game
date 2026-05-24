@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#09090b">
+    <title>ChromaBlast</title>
+    <meta name="description" content="Block puzzle with gravity, rotating board, and chroma line matches.">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="page-bg" aria-hidden="true"></div>
+
+    <main class="app">
+        <header class="header">
+            <div class="header__brand">
+                <h1>ChromaBlast</h1>
+                <span>Gravity Shift</span>
+            </div>
+            <div class="header__scores">
+                <div class="score-block">
+                    <span class="label">Score</span>
+                    <span class="value" id="current-score">0</span>
+                </div>
+                <div class="score-block score-block--dim">
+                    <span class="label">Best</span>
+                    <span class="value" id="high-score">0</span>
+                </div>
+            </div>
+            <div class="header__actions">
+                <button id="btn-pause" class="icon-btn" type="button" aria-label="Pause">⏸</button>
+                <button id="btn-info" class="icon-btn" type="button" aria-label="Help">?</button>
+                <button id="btn-sound" class="icon-btn" type="button" aria-label="Sound">
+                    <span id="sound-icon-on">🔊</span>
+                    <span id="sound-icon-off" class="hidden">🔇</span>
+                </button>
+            </div>
+        </header>
+
+        <section class="metrics">
+            <article class="metric metric--wide">
+                <div class="metric__row">
+                    <span class="label" id="time-status-text">Time</span>
+                    <strong id="time-remaining-text">300s</strong>
+                </div>
+                <div class="bar"><div class="bar__fill" id="game-timer-bar"></div></div>
+            </article>
+            <article class="metric">
+                <span class="label">Shift</span>
+                <strong id="gravity-countdown">30</strong>
+                <span class="metric__sub" id="gravity-dir-box">
+                    <svg class="rotate-arrow clockwise" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.2-6M21 3v5h-5"/></svg>
+                    <svg class="rotate-arrow counter-clockwise hidden" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 2.2-6M3 3v5h5"/></svg>
+                </span>
+            </article>
+            <article class="metric metric--level">
+                <div class="metric__row">
+                    <span class="label">Level <strong id="player-level">1</strong></span>
+                    <span class="level-xp" id="level-xp-text">0%</span>
+                </div>
+                <div class="bar bar--thin"><div class="bar__fill bar__fill--accent" id="level-progress-bar"></div></div>
+                <span class="level-bonus" id="level-bonus-text">+0% score</span>
+            </article>
+        </section>
+
+        <section class="board-wrap" id="board-frame-container">
+            <canvas id="particle-canvas" aria-hidden="true"></canvas>
+            <div class="board-grid" id="board" role="grid" aria-label="Game board"></div>
+        </section>
+
+        <section class="tray">
+            <div class="tray__meta">
+                <span>3 pieces · tap to rotate</span>
+                <span class="tray__cost">−3s / place</span>
+            </div>
+            <div class="pieces-shelf" id="pieces-shelf"></div>
+            <div class="tray__tools">
+                <div class="hold">
+                    <div class="hold-slot" id="hold-slot" title="Hold piece"></div>
+                    <button id="btn-hold" class="chip" type="button">Hold</button>
+                </div>
+                <button id="btn-undo" class="chip" type="button">Undo <em>500</em></button>
+                <button id="btn-freeze" class="chip" type="button">Freeze <em>1000</em></button>
+            </div>
+        </section>
+
+        <p class="streak-line">Streak <strong id="streak-count">0</strong> · one-color line = 2× points</p>
+    </main>
+
+    <div class="event-popup" id="event-popup" aria-live="assertive" hidden>
+        <div class="event-popup__card" id="event-popup-card">
+            <div class="event-popup__icon" id="event-popup-icon"></div>
+            <h3 id="event-popup-title"></h3>
+            <p id="event-popup-msg"></p>
+            <p class="event-popup__bonus" id="event-popup-bonus"></p>
+            <button type="button" class="btn-primary" id="event-popup-continue">Continue</button>
+        </div>
+    </div>
+
+    <div class="modal active" id="modal-intro" role="dialog" aria-modal="true">
+        <div class="modal__box">
+            <h2>ChromaBlast</h2>
+            <p class="modal__tagline">Block Blast in the browser — with real gravity and a rotating board.</p>
+
+            <dl class="rules">
+                <div>
+                    <dt>Play</dt>
+                    <dd>Drag 3 pieces onto the 8×8 grid. Clear full rows or columns.</dd>
+                </div>
+                <div>
+                    <dt>Gravity</dt>
+                    <dd>Blocks always fall down. Every 30s the board rotates — press Continue, then it spins.</dd>
+                </div>
+                <div>
+                    <dt>Chroma</dt>
+                    <dd>Clear a line using one color only → double points.</dd>
+                </div>
+                <div>
+                    <dt>Level</dt>
+                    <dd>Every 1,000 score levels you up: higher points per move, but time drains slightly faster.</dd>
+                </div>
+            </dl>
+
+            <button id="btn-start" class="btn-primary btn-primary--full" type="button">Play</button>
+        </div>
+    </div>
+
+    <div class="modal" id="modal-paused" role="dialog" aria-modal="true">
+        <div class="modal__box modal__box--center">
+            <h2>Paused</h2>
+            <button id="btn-resume" class="btn-primary btn-primary--full" type="button">Resume</button>
+        </div>
+    </div>
+
+    <div class="modal" id="modal-gameover" role="dialog" aria-modal="true">
+        <div class="modal__box modal__box--center">
+            <h2>Game over</h2>
+            <p class="modal__reason" id="gameover-reason"></p>
+            <div class="results">
+                <div><span>Score</span><strong id="final-score">0</strong></div>
+                <div><span>Level</span><strong id="final-level">1</strong></div>
+                <div><span>Chroma</span><strong id="final-chromas">0</strong></div>
+            </div>
+            <button id="btn-restart" class="btn-primary btn-primary--full" type="button">Play again</button>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
