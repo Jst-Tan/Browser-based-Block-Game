@@ -61,6 +61,24 @@ body {
     line-height: 1.47;
     letter-spacing: -0.01em;
     overflow-x: hidden;
+    overscroll-behavior: none;
+}
+
+body.modal-open {
+    overflow: hidden;
+}
+
+.noscript {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    text-align: center;
+    background: var(--bg);
+    color: var(--text-secondary);
 }
 
 button {
@@ -108,6 +126,14 @@ button:focus-visible {
     gap: var(--space-4);
     min-height: 100dvh;
     min-height: 100svh;
+    user-select: none;
+    -webkit-user-select: none;
+    animation: app-enter 0.5s var(--ease) backwards;
+}
+
+@keyframes app-enter {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 /* —— Header (iOS app bar) —— */
@@ -183,6 +209,20 @@ button:focus-visible {
     font-weight: 500;
 }
 
+.score-block--pulse .value {
+    animation: score-pop 0.45s var(--ease-spring);
+}
+
+.score-block--highlight .value {
+    color: var(--accent);
+}
+
+@keyframes score-pop {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.12); }
+    100% { transform: scale(1); }
+}
+
 .header__actions {
     grid-column: 2;
     grid-row: 1 / 3;
@@ -212,6 +252,12 @@ button:focus-visible {
 
 .icon-btn:active {
     transform: scale(0.94);
+}
+
+.icon-btn[aria-pressed="true"] {
+    background: var(--accent-muted);
+    border-color: rgba(10, 132, 255, 0.35);
+    color: var(--accent);
 }
 
 .icon-btn__glyph {
@@ -248,6 +294,19 @@ button:focus-visible {
 }
 
 .metric--level { grid-column: span 1; }
+
+.metric--urgent {
+    border-color: rgba(255, 159, 10, 0.35);
+    box-shadow: 0 0 0 1px rgba(255, 159, 10, 0.12);
+}
+
+.metric--hero.metric--urgent .metric__hero-value {
+    color: var(--warning);
+}
+
+#shift-metric.metric--urgent .metric__value {
+    color: var(--warning);
+}
 
 .metric__row {
     display: flex;
@@ -500,6 +559,10 @@ button:focus-visible {
     transform: scale(0.98);
 }
 
+.draggable-piece-container.is-dragging {
+    opacity: 0.35;
+}
+
 .draggable-piece-container.placed {
     opacity: 0;
     pointer-events: none;
@@ -601,6 +664,35 @@ button:focus-visible {
 .streak-line strong {
     color: var(--text-secondary);
     font-weight: 600;
+}
+
+.game-footer {
+    margin-top: auto;
+    padding-top: var(--space-2);
+    text-align: center;
+}
+
+.game-footer p {
+    font-size: 0.6875rem;
+    color: var(--text-tertiary);
+    letter-spacing: 0.02em;
+}
+
+.badge-new-best {
+    display: inline-block;
+    margin: var(--space-2) 0 var(--space-3);
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--success);
+    background: rgba(48, 209, 88, 0.12);
+    border: 1px solid rgba(48, 209, 88, 0.25);
+    border-radius: 99px;
+}
+
+.result-card--best {
+    border-color: rgba(48, 209, 88, 0.35);
+    background: rgba(48, 209, 88, 0.08);
 }
 
 /* —— Buttons —— */

@@ -76,6 +76,21 @@ let particles = [];
 let isEventPopupOpen = false;
 let popupQueue = [];
 let popupContinueCallback = null;
+let popupAutoDismissTimer = null;
+let popupAutoDismissInterval = null;
+
+/** Auto-close delays (ms). Prevents the game staying frozen if Continue is not pressed. */
+const POPUP_AUTO_MS = {
+    match: 2000,
+    combo: 2200,
+    chroma: 2800,
+    level: 3200,
+    shift: 9000
+};
+let wasPausedBeforeHelp = false;
+let runStartHighScore = 0;
+let beatHighScoreThisRun = false;
+let lastScoreDisplayed = 0;
 
 const DRAG_UPWARD_OFFSET = 48;
 const SHELF_CELL = 15;
@@ -83,6 +98,34 @@ const DRAG_CELL = 32;
 
 function createEmptyBoard() {
     return Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(null));
+}
+
+function haptic(ms = 8) {
+    if (navigator.vibrate) navigator.vibrate(ms);
+}
+
+function loadPreferences() {
+    isSoundEnabled = localStorage.getItem('fallinggrid_sound') !== 'off';
+}
+
+function saveSoundPreference() {
+    localStorage.setItem('fallinggrid_sound', isSoundEnabled ? 'on' : 'off');
+}
+
+function updateModalScrollLock() {
+    const locked = ['modal-intro', 'modal-paused', 'modal-gameover'].some(
+        id => document.getElementById(id).classList.contains('active')
+    );
+    document.body.classList.toggle('modal-open', locked);
+}
+
+function pulseScoreBlock(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('score-block--pulse');
+    void el.offsetWidth;
+    el.classList.add('score-block--pulse');
+    setTimeout(() => el.classList.remove('score-block--pulse'), 480);
 }
 
 // ——— Audio ———
@@ -117,7 +160,49 @@ function playSoundGameOver() {
     [392, 330, 262, 196].forEach((f, i) => setTimeout(() => playTone('sine', f, f * 0.9, 0.18, 0.08), i * 100));
 }
 
-// ——— Event popups (pauses game timer until Continue) ———
+function playSoundLevelUp() {
+    playTone('sine', 440, 660, 0.12, 0.08);
+    setTimeout(() => playTone('sine', 554, 880, 0.14, 0.07), 80);
+}
+
+// ——— Event popups (brief pause; auto-continue if ignored) ———
+
+function clearPopupAutoTimer() {
+    if (popupAutoDismissTimer) {
+        clearTimeout(popupAutoDismissTimer);
+        popupAutoDismissTimer = null;
+    }
+    if (popupAutoDismissInterval) {
+        clearInterval(popupAutoDismissInterval);
+        popupAutoDismissInterval = null;
+    }
+}
+
+function getPopupButtonLabel(type) {
+    return type === 'shift' ? 'Start shift' : 'Continue';
+}
+
+function schedulePopupAutoDismiss(type) {
+    clearPopupAutoTimer();
+    const ms = POPUP_AUTO_MS[type];
+    if (!ms) return;
+
+    const btn = document.getElementById('event-popup-continue');
+    const baseLabel = getPopupButtonLabel(type);
+    const deadline = Date.now() + ms;
+
+    const updateCountdown = () => {
+        if (!isEventPopupOpen) return;
+        const secs = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+        btn.textContent = secs > 0 ? `${baseLabel} (${secs})` : baseLabel;
+    };
+
+    updateCountdown();
+    popupAutoDismissInterval = setInterval(updateCountdown, 250);
+    popupAutoDismissTimer = setTimeout(() => {
+        if (isEventPopupOpen) dismissEventPopup();
+    }, ms);
+}
 
 function showEventPopup(type, title, message, bonus = '', onContinue = null) {
     popupQueue.push({ type, title, message, bonus, onContinue });
@@ -125,7 +210,10 @@ function showEventPopup(type, title, message, bonus = '', onContinue = null) {
 }
 
 function displayNextEventPopup() {
-    if (popupQueue.length === 0) return;
+    if (popupQueue.length === 0) {
+        isEventPopupOpen = false;
+        return;
+    }
 
     const { type, title, message, bonus, onContinue } = popupQueue.shift();
     const popup = document.getElementById('event-popup');
@@ -143,8 +231,33 @@ function displayNextEventPopup() {
     bonusEl.textContent = bonus;
     bonusEl.classList.toggle('hidden', !bonus);
 
-    const btn = document.getElementById('event-popup-continue');
-    btn.textContent = type === 'shift' ? 'Start shift' : 'Continue';
+    document.getElementById('event-popup-continue').textContent = getPopupButtonLabel(type);
+    schedulePopupAutoDismiss(type);
+}
+
+function dismissEventPopup() {
+    if (!isEventPopupOpen) return;
+
+    clearPopupAutoTimer();
+
+    const popup = document.getElementById('event-popup');
+    popup.classList.remove('visible');
+    setTimeout(() => {
+        popup.hidden = true;
+        popup.className = 'event-popup';
+    }, 280);
+
+    isEventPopupOpen = false;
+    const cb = popupContinueCallback;
+    popupContinueCallback = null;
+
+    if (cb) cb();
+
+    if (popupQueue.length > 0) {
+        displayNextEventPopup();
+    } else {
+        document.getElementById('event-popup-continue').textContent = 'Continue';
+    }
 }
 
 function getScoreMultiplier() {
@@ -184,21 +297,11 @@ function checkLevelUp() {
             null
         );
     }
-    if (leveled) updateLevelDisplay();
-}
-
-function dismissEventPopup() {
-    const popup = document.getElementById('event-popup');
-    popup.classList.remove('visible');
-    setTimeout(() => {
-        popup.hidden = true;
-    }, 280);
-
-    isEventPopupOpen = false;
-    const cb = popupContinueCallback;
-    popupContinueCallback = null;
-    if (cb) cb();
-    if (popupQueue.length > 0) displayNextEventPopup();
+    if (leveled) {
+        playSoundLevelUp();
+        haptic([12, 40, 12]);
+        updateLevelDisplay();
+    }
 }
 
 // ——— Particles ———
@@ -413,7 +516,8 @@ function handleDragStart(e) {
     activeDragIndex = index;
     activeDragPiece = shelfPieces[index];
     dragMoved = false;
-    box.style.opacity = '0.3';
+    box.classList.add('is-dragging');
+    try { box.setPointerCapture(e.pointerId); } catch { /* unsupported */ }
 
     floatingDragEl = document.createElement('div');
     floatingDragEl.className = 'floating-drag-piece';
@@ -481,6 +585,7 @@ function handleDragEnd(e) {
         if (box) box.classList.add('placed');
         shelfPieces[activeDragIndex] = null;
         playSoundPlace();
+        haptic(10);
         deductPlacementTimeCost();
 
         applyGravityAnimated(() => {
@@ -494,7 +599,12 @@ function handleDragEnd(e) {
             });
         });
     } else if (box) {
-        box.style.opacity = '1';
+        haptic([6, 30, 6]);
+    }
+
+    if (box) {
+        box.classList.remove('is-dragging');
+        try { box.releasePointerCapture(e.pointerId); } catch { /* unsupported */ }
     }
 
     activeDragPiece = null;
@@ -684,9 +794,13 @@ function executeClears(lines) {
     if (score > highScore) {
         highScore = score;
         localStorage.setItem('fallinggrid_best', String(highScore));
+        pulseScoreBlock('score-block-best');
+        document.getElementById('score-block-best').classList.add('score-block--highlight');
     }
+    if (score > runStartHighScore) beatHighScoreThisRun = true;
 
     updateScoreView();
+    if (chromaMatch || lineCount > 0) haptic(chromaMatch ? [20, 50, 20] : 14);
     updateTimersView();
     updateBoardView();
 
@@ -812,10 +926,21 @@ function updateTimersView() {
         timeRemaining <= 30 ? 'var(--danger)' : timeRemaining <= 90 ? 'var(--warning)' : 'var(--text)';
 
     document.getElementById('gravity-countdown').textContent = `${Math.ceil(gravityCountdown)}s`;
+
+    document.querySelector('.metric--hero')?.classList.toggle('metric--urgent', timeRemaining <= 30);
+    document.getElementById('shift-metric')?.classList.toggle(
+        'metric--urgent',
+        gravityCountdown <= 5 && !isEventPopupOpen && hasGameStarted
+    );
 }
 
 function updateScoreView() {
+    const prev = lastScoreDisplayed;
     document.getElementById('current-score').textContent = score.toLocaleString();
+    if (score > prev) pulseScoreBlock('score-block-current');
+    lastScoreDisplayed = score;
+    if (score > runStartHighScore) beatHighScoreThisRun = true;
+
     document.getElementById('high-score').textContent = highScore.toLocaleString();
     updateLevelDisplay();
 }
@@ -833,6 +958,13 @@ function updatePowerupButtons() {
 // ——— Game flow ———
 
 function startNewGame() {
+    runStartHighScore = highScore;
+    beatHighScoreThisRun = false;
+    lastScoreDisplayed = 0;
+    document.getElementById('new-best-badge').classList.add('hidden');
+    document.querySelectorAll('.result-card').forEach(el => el.classList.remove('result-card--best'));
+    document.getElementById('score-block-best').classList.remove('score-block--highlight');
+
     board = createEmptyBoard();
     score = 0;
     timeRemaining = INITIAL_TIME;
@@ -855,6 +987,11 @@ function startNewGame() {
     isEventPopupOpen = false;
     popupQueue = [];
     popupContinueCallback = null;
+    clearPopupAutoTimer();
+    const eventPopup = document.getElementById('event-popup');
+    eventPopup.classList.remove('visible');
+    eventPopup.hidden = true;
+    eventPopup.className = 'event-popup';
 
     document.getElementById('board-frame-container').classList.remove('freeze-active', 'shift-warning');
     updateLevelDisplay();
@@ -874,22 +1011,26 @@ function startNewGame() {
     ['modal-intro', 'modal-gameover', 'modal-paused'].forEach(id => {
         document.getElementById(id).classList.remove('active');
     });
+    updateModalScrollLock();
 
     if (gameInterval) clearInterval(gameInterval);
     gameInterval = setInterval(gameTick, 100);
     initAudio();
+    haptic(12);
 }
 
 function pauseGame() {
     if (isGameOver || isPaused || isBoardRotating || isCascadeRunning) return;
     isPaused = true;
     document.getElementById('modal-paused').classList.add('active');
+    updateModalScrollLock();
 }
 
 function resumeGame() {
     if (!isPaused) return;
     isPaused = false;
     document.getElementById('modal-paused').classList.remove('active');
+    updateModalScrollLock();
 }
 
 function triggerGameOver(reason) {
@@ -897,12 +1038,16 @@ function triggerGameOver(reason) {
     isGameOver = true;
     clearInterval(gameInterval);
     playSoundGameOver();
+    haptic([30, 60, 30]);
 
     document.getElementById('final-score').textContent = score.toLocaleString();
     document.getElementById('final-level').textContent = playerLevel;
     document.getElementById('final-chromas').textContent = chromaClearsThisRun;
     document.getElementById('gameover-reason').textContent = reason;
+    document.getElementById('new-best-badge').classList.toggle('hidden', !beatHighScoreThisRun);
+    document.querySelector('.result-card')?.classList.toggle('result-card--best', beatHighScoreThisRun);
     document.getElementById('modal-gameover').classList.add('active');
+    updateModalScrollLock();
 }
 
 function bindUI() {
@@ -913,16 +1058,23 @@ function bindUI() {
         isSoundEnabled = !isSoundEnabled;
         iconOn.classList.toggle('hidden', !isSoundEnabled);
         iconOff.classList.toggle('hidden', isSoundEnabled);
-        document.getElementById('btn-sound').setAttribute('aria-label', isSoundEnabled ? 'Sound on' : 'Sound off');
+        const btn = document.getElementById('btn-sound');
+        btn.setAttribute('aria-label', isSoundEnabled ? 'Sound on' : 'Sound off');
+        btn.setAttribute('aria-pressed', String(!isSoundEnabled));
+        saveSoundPreference();
         initAudio();
     });
 
     document.getElementById('btn-pause').addEventListener('click', () => { initAudio(); pauseGame(); });
     document.getElementById('btn-resume').addEventListener('click', resumeGame);
     document.getElementById('btn-info').addEventListener('click', () => {
-        if (!isGameOver) isPaused = true;
+        wasPausedBeforeHelp = isPaused;
+        if (!isGameOver && !isPaused) isPaused = true;
         document.getElementById('modal-paused').classList.remove('active');
         document.getElementById('modal-intro').classList.add('active');
+        document.getElementById('btn-start').textContent =
+            hasGameStarted && !isGameOver ? 'Back to game' : 'Start playing';
+        updateModalScrollLock();
     });
 
     document.getElementById('btn-hold').addEventListener('click', () => {
@@ -981,12 +1133,14 @@ function bindUI() {
     });
 
     document.getElementById('btn-start').addEventListener('click', () => {
-        if (hasGameStarted && !isGameOver && score > 0) {
-            document.getElementById('modal-intro').classList.remove('active');
-            isPaused = false;
+        document.getElementById('modal-intro').classList.remove('active');
+        if (hasGameStarted && !isGameOver) {
+            isPaused = wasPausedBeforeHelp;
+            document.getElementById('btn-start').textContent = 'Start playing';
         } else {
             startNewGame();
         }
+        updateModalScrollLock();
     });
 
     document.getElementById('btn-restart').addEventListener('click', startNewGame);
@@ -1008,11 +1162,20 @@ function bindUI() {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+    loadPreferences();
     bindUI();
     createGrid();
     initParticles();
     requestAnimationFrame(updateParticlesLoop);
     document.getElementById('high-score').textContent = highScore.toLocaleString();
+
+    const soundOn = document.getElementById('sound-icon-on');
+    const soundOff = document.getElementById('sound-icon-off');
+    soundOn.classList.toggle('hidden', !isSoundEnabled);
+    soundOff.classList.toggle('hidden', isSoundEnabled);
+    document.getElementById('btn-sound').setAttribute('aria-pressed', String(!isSoundEnabled));
+
+    updateModalScrollLock();
 
     document.getElementById('event-popup-continue').addEventListener('click', dismissEventPopup);
     document.getElementById('event-popup').addEventListener('click', (e) => {
