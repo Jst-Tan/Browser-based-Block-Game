@@ -1,4 +1,4 @@
-/* ChromaBlast: Gravity Shift */
+/* The Falling Grid */
 
 const GRID_SIZE = 8;
 const INITIAL_TIME = 300;
@@ -34,7 +34,10 @@ const BLOCK_TEMPLATES = {
 
 let board = createEmptyBoard();
 let score = 0;
-let highScore = parseInt(localStorage.getItem('chromablast_best') || '0', 10);
+let highScore = parseInt(
+    localStorage.getItem('fallinggrid_best') || localStorage.getItem('chromablast_best') || '0',
+    10
+);
 let timeRemaining = INITIAL_TIME;
 let gravityCountdown = GRAVITY_ROTATION_CYCLE;
 let nextRotationDirection = 'CW';
@@ -131,14 +134,14 @@ function displayNextEventPopup() {
     isEventPopupOpen = true;
     popupContinueCallback = onContinue || null;
 
-    popup.className = `overlay overlay--${type} visible`;
+    popup.className = `event-popup event-popup--${type} visible`;
     popup.hidden = false;
     document.getElementById('event-popup-icon').textContent = icons[type] || '✦';
     document.getElementById('event-popup-title').textContent = title;
     document.getElementById('event-popup-msg').textContent = message;
     const bonusEl = document.getElementById('event-popup-bonus');
     bonusEl.textContent = bonus;
-    bonusEl.style.display = bonus ? 'block' : 'none';
+    bonusEl.classList.toggle('hidden', !bonus);
 
     const btn = document.getElementById('event-popup-continue');
     btn.textContent = type === 'shift' ? 'Start shift' : 'Continue';
@@ -161,8 +164,7 @@ function updateLevelDisplay() {
 
     document.getElementById('player-level').textContent = playerLevel;
     document.getElementById('level-progress-bar').style.width = `${pct}%`;
-    document.getElementById('level-xp-text').textContent =
-        playerLevel === 1 && score === 0 ? '0 / 1k' : `${Math.min(intoLevel, need).toLocaleString()} / ${(need / 1000).toFixed(0)}k`;
+    document.getElementById('level-xp-text').textContent = `${Math.round(pct)}%`;
     document.getElementById('level-bonus-text').textContent =
         `+${Math.round((playerLevel - 1) * 15)}% score · time +${Math.round((playerLevel - 1) * 6)}% drain`;
 }
@@ -190,7 +192,6 @@ function dismissEventPopup() {
     popup.classList.remove('visible');
     setTimeout(() => {
         popup.hidden = true;
-        popup.className = 'overlay';
     }, 280);
 
     isEventPopupOpen = false;
@@ -311,7 +312,7 @@ function applyGravityAnimated(callback) {
     updateBoardView();
     document.querySelectorAll('.block-element').forEach(el => el.classList.add('falling'));
     setTimeout(() => {
-        document.querySelectorAll('.cell.falling').forEach(c => c.classList.remove('falling'));
+        document.querySelectorAll('.block-element.falling').forEach(el => el.classList.remove('falling'));
         if (callback) callback();
     }, 260);
 }
@@ -539,7 +540,7 @@ function checkStuckState() {
         el.style.color = '';
     } else {
         el.textContent = 'No moves';
-        el.style.color = 'var(--warn)';
+        el.style.color = 'var(--warning)';
     }
 }
 
@@ -682,7 +683,7 @@ function executeClears(lines) {
     timeRemaining = Math.min(INITIAL_TIME, timeRemaining + lineCount * LINE_TIME_REWARD * activeComboCount);
     if (score > highScore) {
         highScore = score;
-        localStorage.setItem('chromablast_best', String(highScore));
+        localStorage.setItem('fallinggrid_best', String(highScore));
     }
 
     updateScoreView();
@@ -803,17 +804,14 @@ function gameTick() {
 }
 
 function updateTimersView() {
-    const secs = Math.ceil(timeRemaining);
-    const timeEl = document.getElementById('time-remaining-text');
-    timeEl.textContent = String(secs);
-    timeEl.style.color =
-        secs <= 30 ? 'var(--danger)' : secs <= 90 ? 'var(--warn)' : 'var(--ink)';
+    document.getElementById('time-remaining-text').textContent = `${Math.ceil(timeRemaining)}s`;
     const pct = Math.min(100, (timeRemaining / INITIAL_TIME) * 100);
     const bar = document.getElementById('game-timer-bar');
     bar.style.width = `${pct}%`;
-    bar.style.background = secs <= 30 ? 'var(--danger)' : secs <= 90 ? 'var(--warn)' : 'var(--accent)';
+    bar.style.background =
+        timeRemaining <= 30 ? 'var(--danger)' : timeRemaining <= 90 ? 'var(--warning)' : 'var(--text)';
 
-    document.getElementById('gravity-countdown').textContent = Math.ceil(gravityCountdown);
+    document.getElementById('gravity-countdown').textContent = `${Math.ceil(gravityCountdown)}s`;
 }
 
 function updateScoreView() {
@@ -915,6 +913,7 @@ function bindUI() {
         isSoundEnabled = !isSoundEnabled;
         iconOn.classList.toggle('hidden', !isSoundEnabled);
         iconOff.classList.toggle('hidden', isSoundEnabled);
+        document.getElementById('btn-sound').setAttribute('aria-label', isSoundEnabled ? 'Sound on' : 'Sound off');
         initAudio();
     });
 
